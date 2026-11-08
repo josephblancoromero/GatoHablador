@@ -28,5 +28,6 @@ Los caracteres `%`, tabulación, retorno y salto de línea se representan como `
 - El addon es entrada no confiable: el receptor valida cabecera, longitud, CRC y límites.
 - El texto del chat es entrada no confiable: nunca se interpreta como código o formato ejecutable.
 - El traductor es intercambiable y recibe solamente texto normalizado.
+- El backend Ollama usa exclusivamente `127.0.0.1:11434/api/chat` y no administra el servicio ni los modelos.
 - La interfaz no debe enviar texto al juego.
 

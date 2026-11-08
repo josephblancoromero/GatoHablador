@@ -10,7 +10,7 @@ Addon y aplicación de escritorio de código abierto para traducir conversacione
 - Sin lectura de memoria ni inyección en el juego.
 - Sin envío automático de mensajes.
 - Sin telemetría, publicidad o actualizador automático.
-- Sin OCR, PowerShell ni descargas automáticas en el MVP.
+- Sin OCR, PowerShell ni descargas automáticas.
 - El chat permanece local mientras se use un traductor local.
 
 ## Arquitectura
@@ -42,15 +42,33 @@ dotnet build GatoHablador.sln -c Release
 dotnet run --project tests/GatoHablador.Core.Tests -c Release
 ```
 
+## Traductor local completo (opcional)
+
+GatoHablador puede usar [Ollama](https://ollama.com/) en el propio equipo. La aplicación solo llama a
+`http://127.0.0.1:11434`; no instala Ollama, no descarga modelos y no inicia procesos.
+
+1. Instala y abre Ollama por separado.
+2. Descarga el modelo recomendado desde una terminal:
+
+   ```powershell
+   ollama pull translategemma:4b
+   ```
+
+3. En GatoHablador selecciona **Ollama local**, conserva `translategemma:4b` y pulsa **Probar Ollama**.
+
+TranslateGemma 4B ocupa aproximadamente 3,3 GB. También se puede escribir otro modelo local en la interfaz.
+Si Ollama no responde, la aplicación conserva el mensaje y recurre al glosario pequeño de prueba.
+
 ## Ejecutar el prototipo
 
 1. Usa WoW en modo ventana o ventana sin bordes.
-2. Copia `addon/GatoHablador` dentro de `World of Warcraft/_retail_/Interface/AddOns/`.
+2. Copia `addon/GatoHablador` dentro de la carpeta `Interface/AddOns/` de la versión usada.
 3. Activa el addon y ejecuta `/reload`.
-4. Abre la aplicación de escritorio.
+4. Abre la aplicación con `dotnet run --project src/GatoHablador.Desktop`.
 5. Ajusta el desplazamiento y tamaño de celda si la matriz no se detecta.
 
-El traductor incluido en esta fase es un glosario pequeño para probar la tubería. Un motor local completo inglés-español llegará en una fase posterior.
+El archivo TOC incluye el cliente Forever `16001` y versiones oficiales comunes. Usa `/gato test` para emitir
+la frase de prueba `Need healer` por el puente.
 
 ## Aviso
 

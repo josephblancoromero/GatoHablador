@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 11509, 16001, 20506, 30403, 40402, 50504, 120100, 120105
 ## Title: GatoHablador
 ## Notes: Puente local de chat para traduccion ingles-espanol.
 ## Author: josephblancoromero

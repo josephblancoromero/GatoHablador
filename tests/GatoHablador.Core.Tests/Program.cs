@@ -7,6 +7,7 @@ var tests = new (string Name, Action Run)[]
     ("Chunked UTF-8 message", ChunkedMessage),
     ("Corrupt frame rejection", CorruptFrame),
     ("Local glossary", Glossary),
+    ("Ollama loopback request", OllamaLoopback),
 };
 
 var failures = 0;
@@ -75,11 +76,49 @@ static void Glossary()
     Assert(result.WasTranslated && result.Text == "necesitamos sanador", "Glossary translation failed.");
 }
 
+static void OllamaLoopback()
+{
+    var handler = new StubHandler(
+        "{\"message\":{\"role\":\"assistant\",\"content\":\"¡Hola!\"},\"done\":true}");
+    using var client = new HttpClient(handler);
+    var result = new OllamaTranslator("translategemma:4b", client)
+        .TranslateAsync("Hello!").AsTask().GetAwaiter().GetResult();
+
+    Assert(result.WasTranslated && result.Text == "¡Hola!", "Ollama response was not parsed.");
+    Assert(handler.RequestUri == new Uri("http://127.0.0.1:11434/api/chat"),
+        "The translator did not use the fixed loopback endpoint.");
+    Assert(handler.RequestBody?.Contains("translategemma:4b", StringComparison.Ordinal) == true,
+        "The selected model was not sent.");
+    Assert(handler.RequestBody?.Contains("Hello!", StringComparison.Ordinal) == true,
+        "The source text was not sent.");
+}
+
 static void Assert(bool condition, string message)
 {
     if (!condition)
     {
         throw new InvalidOperationException(message);
+    }
+}
+
+sealed class StubHandler(string responseBody) : HttpMessageHandler
+{
+    public Uri? RequestUri { get; private set; }
+
+    public string? RequestBody { get; private set; }
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        RequestUri = request.RequestUri;
+        RequestBody = request.Content is null
+            ? null
+            : await request.Content.ReadAsStringAsync(cancellationToken);
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json"),
+        };
     }
 }
 

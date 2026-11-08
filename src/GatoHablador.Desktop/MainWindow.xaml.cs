@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Threading;
 using GatoHablador.Core;
@@ -10,13 +11,22 @@ public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _timer;
     private readonly MessageAssembler _assembler = new();
-    private readonly ITranslator _translator = new GlossaryTranslator();
+    private readonly GlossaryTranslator _glossary = new();
+    private readonly HttpClient _httpClient = new(new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(90),
+    };
+    private ITranslator _translator;
     private bool _busy;
     private CaptureSettings _settings = new(0, 0, 2);
 
     public MainWindow()
     {
         InitializeComponent();
+        _translator = _glossary;
         DataContext = this;
         _timer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -36,6 +46,16 @@ public partial class MainWindow : Window
             return;
         }
 
+        try
+        {
+            _translator = CreateSelectedTranslator();
+        }
+        catch (ArgumentException exception)
+        {
+            MessageBox.Show(this, exception.Message, "Modelo inválido", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         _assembler.Reset();
         _timer.Start();
         StartButton.IsEnabled = false;
@@ -46,6 +66,34 @@ public partial class MainWindow : Window
     private void StopButton_Click(object sender, RoutedEventArgs e) => StopCapture();
 
     private void ClearButton_Click(object sender, RoutedEventArgs e) => Messages.Clear();
+
+    private async void TestOllamaButton_Click(object sender, RoutedEventArgs e)
+    {
+        TestOllamaButton.IsEnabled = false;
+        StatusText.Text = "Probando Ollama local…";
+        try
+        {
+            var translator = new OllamaTranslator(ModelBox.Text, _httpClient);
+            var result = await translator.TranslateAsync("Hello! Ready for the dungeon?");
+            StatusText.Text = $"Ollama listo · prueba: {result.Text}";
+        }
+        catch (TaskCanceledException)
+        {
+            StatusText.Text = "Ollama no respondió a tiempo. Verifica que esté ejecutándose.";
+        }
+        catch (HttpRequestException)
+        {
+            StatusText.Text = "Ollama no responde en 127.0.0.1:11434.";
+        }
+        catch (Exception exception)
+        {
+            StatusText.Text = $"Ollama no disponible: {exception.Message}";
+        }
+        finally
+        {
+            TestOllamaButton.IsEnabled = true;
+        }
+    }
 
     private async void Timer_Tick(object? sender, EventArgs e)
     {
@@ -77,7 +125,18 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var translated = await _translator.TranslateAsync(message.Text);
+            TranslationResult translated;
+            string? translationWarning = null;
+            try
+            {
+                translated = await _translator.TranslateAsync(message.Text);
+            }
+            catch (Exception exception) when (_translator is OllamaTranslator
+                && exception is not OperationCanceledException)
+            {
+                translated = await _glossary.TranslateAsync(message.Text);
+                translationWarning = "Ollama falló; se usó el glosario local";
+            }
             Messages.Insert(0, new ChatRow(
                 message.ReceivedAt.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture),
                 message.Author,
@@ -89,9 +148,9 @@ public partial class MainWindow : Window
                 Messages.RemoveAt(Messages.Count - 1);
             }
 
-            StatusText.Text = translated.WasTranslated
+            StatusText.Text = translationWarning ?? (translated.WasTranslated
                 ? "Mensaje traducido"
-                : "Mensaje recibido · sin coincidencia en el glosario";
+                : "Mensaje recibido · sin coincidencia en el glosario");
         }
         catch (Exception exception)
         {
@@ -118,6 +177,10 @@ public partial class MainWindow : Window
         return true;
     }
 
+    private ITranslator CreateSelectedTranslator() => TranslatorBox.SelectedIndex == 0
+        ? new OllamaTranslator(ModelBox.Text, _httpClient)
+        : _glossary;
+
     private void StopCapture()
     {
         _timer.Stop();
@@ -129,6 +192,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _timer.Stop();
+        _httpClient.Dispose();
         base.OnClosed(e);
     }
 }
