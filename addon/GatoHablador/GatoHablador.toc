@@ -1,0 +1,10 @@
+## Interface: 120100
+## Title: GatoHablador
+## Notes: Puente local de chat para traduccion ingles-espanol.
+## Author: josephblancoromero
+## Version: 0.1.0
+## SavedVariables: GatoHabladorDB
+## X-License: MIT
+
+Bridge.lua
+
