@@ -42,6 +42,9 @@ dotnet build GatoHablador.sln -c Release
 dotnet run --project tests/GatoHablador.Core.Tests -c Release
 ```
 
+Cada ejecución correcta de GitHub Actions adjunta además un paquete de prueba `GatoHablador-windows-*`
+con la aplicación compilada y el addon. Los paquetes de prueba se conservan durante 14 días.
+
 ## Traductor local completo (opcional)
 
 GatoHablador puede usar [Ollama](https://ollama.com/) en el propio equipo. La aplicación solo llama a

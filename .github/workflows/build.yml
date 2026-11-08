@@ -21,4 +21,18 @@ jobs:
         run: dotnet build GatoHablador.sln -c Release
       - name: Core tests
         run: dotnet run --project tests/GatoHablador.Core.Tests -c Release --no-build
+      - name: Publish Windows app
+        run: dotnet publish src/GatoHablador.Desktop/GatoHablador.Desktop.csproj -c Release --no-build -o publish/app
+      - name: Bundle addon and documentation
+        shell: pwsh
+        run: |
+          Copy-Item addon/GatoHablador publish/addon/GatoHablador -Recurse
+          Copy-Item README.md, LICENSE, PRIVACY.md, SECURITY.md publish/
+      - name: Upload test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: GatoHablador-windows-${{ github.sha }}
+          path: publish
+          if-no-files-found: error
+          retention-days: 14
 
